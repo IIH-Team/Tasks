@@ -6,6 +6,7 @@
 <title>IIH Team Tasks</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1a1a1a;min-height:100vh}
@@ -183,6 +184,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .tr-rating.good{color:#16a34a}
 .tr-rating.med{color:#d97706}
 .tr-rating.bad{color:#dc2626}
+/* Team Pulse styles */
+.tp-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+@media(max-width:600px){.tp-kpi-row{grid-template-columns:repeat(2,1fr)}}
+.tp-lead-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin-bottom:16px}
+.tp-lead-card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:13px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.tp-lead-card.has-stalled{border-left:3px solid #dc2626}
+.tp-lead-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.tp-lead-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;color:#fff}
+.tp-lead-name{font-weight:700;font-size:14px;line-height:1.2}
+.tp-lead-count{font-size:11px;color:#888}
+.tp-lead-pctbar{height:5px;background:#f3f4f6;border-radius:99px;overflow:hidden;margin-bottom:8px}
+.tp-lead-pctfill{height:100%;background:#1F3864;border-radius:99px}
+.tp-lead-badges{display:flex;gap:4px;flex-wrap:wrap}
+.tp-mini-badge{font-size:10px;padding:2px 7px;border-radius:99px;font-weight:700;white-space:nowrap}
+.tp-table-wrap{overflow-x:auto}
+.tp-table{width:100%;border-collapse:collapse;font-size:13px;min-width:760px}
+.tp-table th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#999;padding:8px 10px;border-bottom:2px solid #eee;cursor:pointer;white-space:nowrap;user-select:none}
+.tp-table th:hover{color:#1F3864}
+.tp-table td{padding:9px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+.tp-table tr.stalled-row td:first-child{border-left:3px solid #dc2626}
+.tp-sol-name{font-weight:600;font-size:13px;color:#1a1a1a}
+.tp-sol-sector{font-size:11px;color:#999;margin-top:1px}
+.tp-pct-mini{display:flex;align-items:center;gap:6px;min-width:70px}
+.tp-pct-mini-bar{flex:1;height:5px;background:#f3f4f6;border-radius:99px;overflow:hidden}
+.tp-pct-mini-fill{height:100%;border-radius:99px}
+.tp-note{font-size:12px;color:#888;font-style:italic;max-width:220px}
+.tp-note.nomove{color:#d97706;font-style:normal;font-weight:600}
+.tp-detail-row{display:none}
+.tp-detail-row.open{display:table-row}
+.tp-detail-box{background:#f8f9fb;padding:10px 14px;border-radius:8px;font-size:12px;color:#555;line-height:1.6}
+.tp-detail-box b{color:#1F3864}
+.tp-row-actions{display:flex;gap:2px;white-space:nowrap}
+.import-hint{font-size:11px;color:#aaa;margin-top:4px}
 </style>
 </head>
 <body>
@@ -218,7 +252,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <div class="stat" id="stat-extra" style="display:none"><div class="stat-label" id="label-extra">At Risk / Delayed</div><div class="stat-val late" id="s-extra">—</div></div>
       <div class="stat" id="stat-stalled" style="display:none"><div class="stat-label">Stalled</div><div class="stat-val late" id="s-stalled">—</div></div>
     </div>
-    <div class="prog-wrap">
+    <div class="prog-wrap" id="prog-wrap">
       <div class="prog-label"><span id="prog-label">Overall progress</span><span id="prog-pct">0</span>%</div>
       <div class="prog-bar"><div class="prog-fill" id="prog" style="width:0%"></div></div>
     </div>
@@ -229,6 +263,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <div class="nav-tab" onclick="showView('leaderboard',this)"><i class="ti ti-trophy"></i> Leaderboard</div>
       <div class="nav-tab" onclick="showView('translation',this)"><i class="ti ti-language"></i> Translation</div>
       <div class="nav-tab" onclick="showView('backlog',this)" id="tab-backlog"><i class="ti ti-layout-list"></i> Backlog <span id="bl-notif-dot" style="display:none;width:8px;height:8px;background:#dc2626;border-radius:50%;display:none;flex-shrink:0"></span></div>
+      <div class="nav-tab" onclick="showView('teampulse',this)"><i class="ti ti-pulse"></i> Team Pulse</div>
     </div>
 
     <!-- TASKS VIEW -->
@@ -459,6 +494,114 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <div id="bl-list"><div class="empty"><i class="ti ti-loader"></i>Loading backlog...</div></div>
     </div>
 
+    <!-- TEAM PULSE VIEW -->
+    <div style="display:none" id="view-teampulse">
+      <div class="tp-kpi-row">
+        <div class="stat"><div class="stat-label">Total projects</div><div class="stat-val" id="tp-s-total">—</div></div>
+        <div class="stat"><div class="stat-label">Avg % complete</div><div class="stat-val done" id="tp-s-avgpct">—</div></div>
+        <div class="stat"><div class="stat-label">Stalled (&gt;<span id="tp-threshold-label">10</span>d)</div><div class="stat-val late" id="tp-s-stalled">—</div></div>
+        <div class="stat"><div class="stat-label">No movement this week</div><div class="stat-val pend" id="tp-s-nomove">—</div></div>
+      </div>
+
+      <div class="dash-card-title" style="margin-bottom:10px">Per-Lead Snapshot — who's moving, who's stuck</div>
+      <div class="tp-lead-grid" id="tp-lead-cards"></div>
+
+      <div class="controls">
+        <input type="text" id="tp-search" placeholder="Search projects...">
+        <select id="tp-filter-sector"><option value="">All sectors</option></select>
+        <select id="tp-filter-lead"><option value="">All leads</option></select>
+        <select id="tp-filter-phase"><option value="">All phases</option></select>
+        <select id="tp-filter-risk"><option value="">All risks</option></select>
+        <select id="tp-filter-move"><option value="">All projects</option><option value="stalled">⚠ Stalled only</option><option value="nomove">⏸ No movement this week</option></select>
+        <button class="btn btn-primary" id="tp-add-btn" style="display:none" onclick="toggleTpForm()"><i class="ti ti-plus"></i> Add project</button>
+        <button class="btn" id="tp-import-btn" style="display:none" onclick="document.getElementById('tp-import-input').click()"><i class="ti ti-file-spreadsheet"></i> Import Excel</button>
+        <input type="file" id="tp-import-input" accept=".xlsx,.xls" style="display:none" onchange="handleTpImport(event)">
+        <button class="btn" onclick="exportTpCSV()"><i class="ti ti-table-export"></i> Export</button>
+      </div>
+      <div class="import-hint" id="tp-import-hint" style="display:none">رفع ملف Excel (نفس صيغة Projects Masterlist) بيحدّث المشاريع الموجودة بالاسم ويضيف الجديد منها — ما يمسح أي بيانات يدوية إلا اللي فعلاً متغيرة بالملف.</div>
+
+      <!-- Add/Edit Form -->
+      <div class="add-form" id="tp-form">
+        <div class="form-title" id="tp-form-title"><i class="ti ti-plus"></i> New Project</div>
+        <div class="form-row">
+          <input type="text" id="tp-solution" placeholder="Solution / project name *">
+          <select id="tp-sector">
+            <option value="">Select sector...</option>
+            <option>HEM Office</option><option>Housing</option><option>Shared Services</option>
+            <option>E&amp;C</option><option>Municipal Affairs</option><option>P&amp;D</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <select id="tp-lead">
+            <option value="">Assign lead...</option>
+            <option>Moazzam</option><option>Obada</option><option>Saed</option>
+            <option>Eid</option><option>Nora</option><option>Not Assigned</option>
+          </select>
+          <select id="tp-phase">
+            <option>Scoping</option><option>Requirements Gathering</option>
+            <option>BRD In Progress</option><option>BRD Completed</option>
+            <option>BRD Submitted</option><option>Design Phase</option><option>N/A</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <select id="tp-risk">
+            <option>On Track</option><option>At Risk</option><option>Delayed</option>
+          </select>
+          <input type="number" id="tp-pct" min="0" max="100" placeholder="% complete (0-100)">
+        </div>
+        <div class="form-row">
+          <select id="tp-priority">
+            <option value="">BRD Priority...</option>
+            <option value="1">1 — Urgent</option>
+            <option value="2">2 — High</option>
+            <option value="3">3 — Medium</option>
+            <option value="4">4 — Low</option>
+          </select>
+          <input type="date" id="tp-lastupdate" placeholder="Last update date">
+        </div>
+        <div class="form-row">
+          <input type="date" id="tp-eta" placeholder="BRD ETA">
+          <input type="text" id="tp-businessowner" placeholder="Business Owner">
+        </div>
+        <div class="form-row">
+          <input type="text" id="tp-aichampion" placeholder="AI Champion">
+          <input type="text" id="tp-link" placeholder="Solution link (URL)">
+        </div>
+        <div class="form-row">
+          <textarea id="tp-nextsteps" placeholder="Next steps..." class="full"></textarea>
+        </div>
+        <div class="form-row">
+          <textarea id="tp-pastactions" placeholder="Past actions..." class="full"></textarea>
+        </div>
+        <div class="form-row">
+          <textarea id="tp-weeklynote" placeholder="This week's update note..." class="full"></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn" onclick="cancelTpForm()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveTpItem()" id="tp-save-btn"><i class="ti ti-check"></i> <span id="tp-save-text">Add project</span></button>
+        </div>
+      </div>
+
+      <div class="dash-card-full tp-table-wrap">
+        <table class="tp-table" id="tp-table">
+          <thead>
+            <tr>
+              <th onclick="tpSort('solution')">Solution</th>
+              <th onclick="tpSort('lead')">Lead</th>
+              <th onclick="tpSort('phase')">Phase</th>
+              <th onclick="tpSort('risk')">Risk</th>
+              <th onclick="tpSort('pct')">%</th>
+              <th onclick="tpSort('lastUpdate')">Last Update</th>
+              <th>This Week</th>
+              <th onclick="tpSort('brdEta')">BRD ETA</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tp-table-body"><tr><td colspan="9" class="empty"><i class="ti ti-loader"></i>Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -520,10 +663,18 @@ function isDueSoon(t){ return !t.done && t.date && (t.date===todayStr||t.date===
 window.showView = function(view, el){
   document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));
   el.classList.add('active');
-  ['tasks','dashboard','leaderboard','translation','backlog'].forEach(v=>{
+  ['tasks','dashboard','leaderboard','translation','backlog','teampulse'].forEach(v=>{
     const e = document.getElementById('view-'+v);
     if(e) e.style.display = v===view ? 'block' : 'none';
   });
+  if(view==='teampulse'){
+    document.getElementById('stats-bar').style.display='none';
+    document.getElementById('prog-wrap').style.display='none';
+    renderTeamPulse();
+    return;
+  }
+  document.getElementById('stats-bar').style.display='';
+  document.getElementById('prog-wrap').style.display='';
   if(view==='translation'){
     document.getElementById('label-total').textContent='Total files';
     document.getElementById('label-done').textContent='Done';
@@ -586,6 +737,7 @@ onAuthStateChanged(auth, user=>{
     if(unsubTasks){unsubTasks();unsubTasks=null;}
     if(unsubTr){unsubTr();unsubTr=null;}
     if(unsubBl){unsubBl();unsubBl=null;}
+    if(unsubTp){unsubTp();unsubTp=null;}
   }
 });
 
@@ -621,6 +773,8 @@ function startListening(){
   });
   startBlListening();
   seedBacklogIfEmpty();
+  startTpListening();
+  seedTeamPulseIfEmpty();
 }
 
 // ── TASKS ────────────────────────────────────────────────────────────────────
@@ -1399,12 +1553,365 @@ ${recentUpdates.map(b=>`• ${b.solution} → ${b.phase} | ${b.pct||0}%`).join('
   `;
 };
 
+
+// ── TEAM PULSE (merged from Projects Masterlist + weekly Backlog tracker) ────
+const tpCol = collection(db, "teamPulse");
+let teamPulse=[], editingTpId=null, tpSortField='solution', tpSortDir=1, unsubTp=null;
+const TP_LEAD_COLORS={'Moazzam':'#1F3864','Obada':'#8b5cf6','Saed':'#ec4899','Eid':'#f97316','Nora':'#14b8a6','Not Assigned':'#9ca3af'};
+const TP_SEED = [{"solution": "Dynamic Subsidy Allocation & Optimization Tool", "sector": "Housing", "lead": "Obada", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": null, "lastUpdate": "2026-05-12", "brdEta": null, "pastActions": "* Incorporated feedback and enhanced the BRD with new use cases, data sections, process flows, and the Central Bank data source.\n* Aligned requirements and finalized the scope.\n* BRD signed off.", "nextSteps": "Handed-off to BD. \nDesign phase", "businessOwner": "نايف الصقعبي", "aiChampion": "مشاري الكريديس", "link": "https://drive.google.com/drive/folders/19Vmfio5yGvT06q38ZQ0K2vSxnSqtBBsd?usp=drive_link", "support": "", "weeklyNote": "Coordinating meetings between ByteDance and BOs", "noMovement": false}, {"solution": "Smart Housing Co-pilot", "sector": "Housing", "lead": "Obada", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": 1, "lastUpdate": "2026-05-12", "brdEta": null, "pastActions": "Refined and updated use cases, added new use cases, dedicated data sections, process flow diagrams, and a new data source.", "nextSteps": "Handed-off to BD. \nDesign phase", "businessOwner": "نايف الرشيدي", "aiChampion": "مشاري الكريديس", "link": "https://drive.google.com/drive/folders/1YJejPLo64f_yHzgHMPHpYOMP2ZOH1chV?usp=drive_link", "support": "", "weeklyNote": "Coordinating meetings between ByteDance and BOs", "noMovement": false}, {"solution": "Policy AI Lab", "sector": "HEM Office", "lead": "Moazzam", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": null, "lastUpdate": "2026-05-12", "brdEta": null, "pastActions": "Design Handoff complete", "nextSteps": "Design Phase", "businessOwner": "د. أحمد الدرويش", "aiChampion": "حمد الشريدة", "link": "https://drive.google.com/drive/folders/19_q7dD4HTu9JYO5W1BPeFCAio0t6UDPi?usp=drive_link", "support": "", "weeklyNote": "No new update", "noMovement": true}, {"solution": "Media Appearance v1.0", "sector": "HEM Office", "lead": "Obada", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": 2, "lastUpdate": "2026-05-12", "brdEta": null, "pastActions": "Design Handoff complete", "nextSteps": "Handed-off to BD. \nDesign phase", "businessOwner": "رحاب بن سعيد", "aiChampion": "حمد الشريدة", "link": "https://drive.google.com/drive/folders/1QMuLBTYab8-UjeFXB6_01uiExGhA0xfY?usp=drive_link", "support": "", "weeklyNote": "Coordinating meetings between ByteDance and BOs", "noMovement": false}, {"solution": "Digital Human & Citizens Insights Hub", "sector": "Shared Services", "lead": "Moazzam", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": null, "lastUpdate": "2026-05-12", "brdEta": null, "pastActions": "Design Handoff complete", "nextSteps": "Design Phase", "businessOwner": "عبير", "aiChampion": "وليد العسكر", "link": "https://drive.google.com/drive/folders/1RmbBb7THUaSNWBhJ0s4HRYcvt2HsdNvi?usp=drive_link", "support": "", "weeklyNote": "No new update", "noMovement": true}, {"solution": "Internal Audit Genius", "sector": "HEM Office", "lead": "Obada", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": null, "lastUpdate": "2026-05-12", "brdEta": null, "pastActions": "Design Handoff complete", "nextSteps": "Handed-off to BD. \nDesign phase", "businessOwner": "محمد السعيد", "aiChampion": "حمد الشريدة", "link": "https://drive.google.com/drive/folders/1fUP_002kYtldswI4ShdCtRo0SRozZlTg?usp=drive_link", "support": "", "weeklyNote": "", "noMovement": true}, {"solution": "Sentiment Pulse AI", "sector": "HEM Office", "lead": "Moazzam", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": null, "lastUpdate": "2026-05-12", "brdEta": null, "pastActions": "Design Handoff complete", "nextSteps": "Design Phase", "businessOwner": "مصطفى الزعتري", "aiChampion": "حمد الشريدة", "link": "https://drive.google.com/drive/folders/15loU6_vuWwlQ19y78V-AJ0njhUA2YLU3?usp=drive_link", "support": "", "weeklyNote": "No new update", "noMovement": true}, {"solution": "Advancing IC with AI", "sector": "HEM Office", "lead": "Moazzam", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": null, "lastUpdate": "2026-05-12", "brdEta": null, "pastActions": "Design Handoff Complete", "nextSteps": "Design Phase", "businessOwner": "قصي الفواز", "aiChampion": "حمد الشريدة", "link": "https://drive.google.com/drive/folders/1idTrg2EX8kK0M6qksQEhMmWIDMm2tzCO?usp=drive_link", "support": "", "weeklyNote": "No new update", "noMovement": true}, {"solution": "Directives Co-pilot", "sector": "HEM Office", "lead": "Obada", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": null, "lastUpdate": "2026-05-12", "brdEta": null, "pastActions": "Design Handoff complete", "nextSteps": "Handed-off to BD. \nDesign phase", "businessOwner": "عبدالله السيف", "aiChampion": "حمد الشريدة", "link": "https://drive.google.com/drive/folders/1yDim7gLjpFGvFM2ya_CZbva7Z3pUhorq?usp=drive_link", "support": "", "weeklyNote": "", "noMovement": true}, {"solution": "Smart Scheduling", "sector": "HEM Office", "lead": "Obada", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": null, "lastUpdate": "2026-05-12", "brdEta": null, "pastActions": "Design Handoff complete", "nextSteps": "Handed-off to BD. \nDesign phase", "businessOwner": "د هديل الزهراني", "aiChampion": "حمد الشريدة", "link": "https://drive.google.com/drive/folders/1noI3ce-3ODzmhm6ScrJd3fnXzyH-uCQh?usp=drive_link", "support": "", "weeklyNote": "", "noMovement": true}, {"solution": "Board and Committees", "sector": "HEM Office", "lead": "Nora", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": null, "lastUpdate": "2026-05-05", "brdEta": null, "pastActions": "BRD Signed off", "nextSteps": "Design Phase", "businessOwner": "طلال القحطاني", "aiChampion": "حمد الشريدة", "link": "https://drive.google.com/drive/folders/1lwnYqb091SZfZ1aPmn254E2uWf5yT9kN?usp=drive_link", "support": "", "weeklyNote": "-", "noMovement": true}, {"solution": "Requirements and Checklist Generator", "sector": "E&C", "lead": "Moazzam", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": 1, "lastUpdate": "2026-05-20", "brdEta": null, "pastActions": "* BRD Signed off by Solutions Owner\n* BRD Handoff with ByteDanc\n* HLSD conversations kicked off", "nextSteps": "Design Phase", "businessOwner": "سعيد القحطاني", "aiChampion": "Sarah AlGhamdi", "link": "https://drive.google.com/drive/folders/18NAoB43xzMUKB_RX2_tbN8Y4CEHzVghp?usp=drive_link", "support": "", "weeklyNote": "No new update", "noMovement": true}, {"solution": "Demand & Supply Optimizer", "sector": "Housing", "lead": "Obada", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": 2, "lastUpdate": "2026-05-25", "brdEta": "2026-05-19", "pastActions": "* Updated the BRD by incorporating business feedback, enhancing data sections, adding missing fields and screens for key use cases, and making structural improvements.\n* BRD Signed-off.", "nextSteps": "* Translation and Hand-off to BD\n* Design phase", "businessOwner": "نايف الصقعبي", "aiChampion": "مشاري الكريديس", "link": "https://drive.google.com/drive/folders/1gFCGDAgIS2aILEU4KId_g4jmLN9hJ-9y?usp=drive_link", "support": "", "weeklyNote": "Coordinating meetings between ByteDance and BOs", "noMovement": false}, {"solution": "Urban Planning Companion", "sector": "Municipal Affairs", "lead": "Moazzam", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": 3, "lastUpdate": "2026-05-20", "brdEta": "2026-06-10", "pastActions": "* BRD Signed off", "nextSteps": "Design Phase", "businessOwner": "حاتم الخثلان", "aiChampion": "محمد الدوسري", "link": "https://drive.google.com/drive/folders/15599E3WjFMruJsMc719f6gckdelh3DT4?usp=drive_link", "support": "", "weeklyNote": "No new update", "noMovement": true}, {"solution": "Intelligent Invoice Management", "sector": "Shared Services", "lead": "Eid", "phase": "BRD In Progress", "risk": "On Track", "pct": 60, "brdPriority": 4, "lastUpdate": "2026-06-16", "brdEta": "2026-06-15", "pastActions": "*Start Drafting Scoping and BRD document", "nextSteps": "*Complete Drafting Scoping and BRD document\n* Plan for BRD Review meeting with Business owner", "businessOwner": "عبدالعزيز العجلان", "aiChampion": "وليد العسكر", "link": "https://drive.google.com/drive/folders/1_KLhhVc-lgOW_21zBpmq8meh5smCabbK?usp=drive_link", "support": "", "weeklyNote": "", "noMovement": true}, {"solution": "Meeting Genius v2.0", "sector": "HEM Office", "lead": "Moazzam", "phase": "BRD Completed", "risk": "On Track", "pct": 90, "brdPriority": 2, "lastUpdate": "2026-05-20", "brdEta": "2026-06-14", "pastActions": "* Solution Owner has provided additional detail which is being incorporated into the BRD.", "nextSteps": "Re-submit BRD for Sign Off", "businessOwner": "عبدالله السيف", "aiChampion": "حمد الشريدة", "link": "https://drive.google.com/drive/folders/1CrgCkTnhZdfXqOo5gAUVEA583X4Bc8co?usp=drive_link", "support": "", "weeklyNote": "", "noMovement": true}, {"solution": "Financial & Budgeting Co-pilot", "sector": "Shared Services", "lead": "Saed", "phase": "BRD Completed", "risk": "At Risk", "pct": 90, "brdPriority": 1, "lastUpdate": "2026-06-16", "brdEta": "2026-05-18", "pastActions": "* Reflected the Business Owner’s comments in the BRD.\n* Conducted meetings regarding the demo presentation.\n* Added 3 new use cases to the BRD .", "nextSteps": "* Awaiting final sign-off of the BRD \n* Coordinating with the Bytedance and Buiness owner for HLSD requirements.\n* Obtain the required reports to support the HLSD phase", "businessOwner": "علي الكديسي", "aiChampion": "وليد العسكر", "link": "https://drive.google.com/drive/folders/1NjdsAsFUeIKjMkftuODGqnfTYDbeVHD0?usp=drive_link", "support": "", "weeklyNote": "* Waiting the signed-off BRD document from product owner then escalation\n*  Coordinating meetings between ByteDance and product owner", "noMovement": false}, {"solution": "Sales Agent Stimulator", "sector": "Housing", "lead": "Obada", "phase": "Scoping", "risk": "On Track", "pct": 30, "brdPriority": 4, "lastUpdate": "2026-06-16", "brdEta": "2026-06-30", "pastActions": "* A meeting with NHCI, BCG, and ByteDance on 11-May to discuss the new scope.\n* Demo session with the Business Owner on 2-June to review the solution and feedback.", "nextSteps": "• Scheduling a meeting with BO on 21/6 to gather the requirements\n• ByteDance is assessing gaps and required enhancements against the new scope, with completion expected by 9 June.\n• Following the assessment, the team will finalize and proceed with the new scope.", "businessOwner": "الشركة الوطنية للاسكان", "aiChampion": "مشاري الكريديس", "link": "https://drive.google.com/drive/folders/1VOvVxbRXJzrmwyvbYkJ4pJhrAgmp8VK0?usp=drive_link", "support": "", "weeklyNote": "Coordinating meetings with BOs\n- Arranging translation for documents", "noMovement": false}, {"solution": "Roads Maintenance AI", "sector": "Municipal Affairs", "lead": "Saed", "phase": "BRD Completed", "risk": "Delayed", "pct": 90, "brdPriority": 2, "lastUpdate": "2026-06-16", "brdEta": "2026-05-24", "pastActions": "* Conducted a meeting with ByteDance and the Business Owner regarding the data.\n* Conducted requirements gathering sessions to build the BRD.\n* Sent the initial BRD draft to the Business Owner.", "nextSteps": "* Awaiting BRD feedback from the Business Owner.\n* Reflecting the received comments and updates in the BRD.\n* Initiating HLSD sessions with ByteDance and the Business Owner.", "businessOwner": "د. إبراهيم عبدالله", "aiChampion": "محمد الدوسري", "link": "https://drive.google.com/drive/folders/1v56FwoDxREi-sXepILc-OfT3gwj9AOW5?usp=drive_link", "support": "", "weeklyNote": "* Waiting the signed-off BRD document from product owner and then esclatation", "noMovement": false}, {"solution": "Intelligent Investor Center", "sector": "Municipal Affairs", "lead": "Eid", "phase": "BRD In Progress", "risk": "At Risk", "pct": 65, "brdPriority": 1, "lastUpdate": "2026-06-16", "brdEta": "2026-07-01", "pastActions": "* Conducted a demo meeting with Business Owner and Bytedance team\n* Joint meeting with Data Team to review Data scheme for Furas", "nextSteps": "* Start Drafting Scope and BRD documents", "businessOwner": "محمد الدوسري", "aiChampion": "اروى المفيز", "link": "https://drive.google.com/drive/folders/1bGwEptXj8uPJ1QCWo4Zhsv3Qd74qm2xM?usp=drive_link", "support": "", "weeklyNote": "", "noMovement": true}, {"solution": "Intelligent Violations Detector", "sector": "E&C", "lead": "Eid", "phase": "BRD Submitted", "risk": "On Track", "pct": 100, "brdPriority": 1, "lastUpdate": "2026-06-09", "brdEta": "2026-06-15", "pastActions": "BRD Signed off", "nextSteps": "* Feedback to bytdance team comments", "businessOwner": "خالد مساعد الجبير", "aiChampion": "سارة الغامدي", "link": "https://drive.google.com/drive/folders/15Z1efDZ5I0RcipZ-bY41X8wHh5zYspZz?usp=drive_link", "support": "", "weeklyNote": "No new update", "noMovement": true}, {"solution": "AI Legal Advisor v2.0", "sector": "HEM Office", "lead": "Eid", "phase": "BRD In Progress", "risk": "On Track", "pct": 70, "brdPriority": 2, "lastUpdate": "2026-06-16", "brdEta": "2026-09-14", "pastActions": "* Finished on the Expert Committee BRD document.\n* Finished preparing draft scoping document (AI legal Advisor).", "nextSteps": "* Plan for a meeting with the Business Owner to get feedback regarding the submitted Expert Committee BRD document.", "businessOwner": "سلطان الهجلة", "aiChampion": "حمد الشريدة", "link": "AI Legal Advisor", "support": "", "weeklyNote": "No new update", "noMovement": true}, {"solution": "Qualification and Procurement Genius", "sector": "Shared Services", "lead": "Saed", "phase": "Requirements Gathering", "risk": "On Track", "pct": 50, "brdPriority": 3, "lastUpdate": "2026-06-16", "brdEta": "2026-06-16", "pastActions": "* Conducted requirements gathering sessions for the BRD document.\n* Prepared the initial draft of the BRD document.", "nextSteps": "* Conducting requirements gathering sessions for the BRD.\n* Submitting the draft BRD document to the Business Owner for review.\n* Awaiting the report templates from the Business Owner.", "businessOwner": "محمد الماجد", "aiChampion": "وليد العسكر", "link": "https://drive.google.com/drive/folders/1_nbsFdA5ev-EWXPiT-h1kVey0tz3bBAO?usp=drive_link", "support": "", "weeklyNote": "*  Coordinating meetings with product owner to discuss BRD", "noMovement": false}, {"solution": "Intelligent Correspondence Manager", "sector": "HEM Office", "lead": "Nora", "phase": "Scoping", "risk": "On Track", "pct": 28, "brdPriority": 3, "lastUpdate": "2026-06-16", "brdEta": "2026-07-15", "pastActions": "* Prepared second draft of the scope document.\n* Conducted a second scope review meeting with business owner.\n*Sent the Scope document to business owner for sign-off.", "nextSteps": "*Await the sign-off of the scope document.\n*Conduct requirment gathering sessions with the stakeholders.", "businessOwner": "ماجد العرفج", "aiChampion": "حمد الشريدة", "link": "https://drive.google.com/drive/folders/1ho26XBLXDjsUKB9xudCNRI3Wq4QadSP-?usp=drive_link", "support": "", "weeklyNote": "-", "noMovement": true}, {"solution": "Plans Compliance and Design Co-pilot", "sector": "E&C", "lead": "Moazzam", "phase": "Scoping", "risk": "On Track", "pct": 20, "brdPriority": 4, "lastUpdate": "2026-05-20", "brdEta": "2026-06-27", "pastActions": "* Next requirements gathering meeting is scheduled for June 21\n* BRD generation is ongoing", "nextSteps": "* Meet with Licensing department to gather requirements and get feedback on BRD. \n* Finalize Scope and submit for sign off", "businessOwner": "سعيد علي", "aiChampion": "سارة الغامدي", "link": "https://drive.google.com/drive/folders/1KojSqd06vuo0jmsmKjWqtonpqK0RQFrO?usp=drive_link", "support": "", "weeklyNote": "Finalizing Scoping Doc", "noMovement": false}, {"solution": "Expert Committee", "sector": "HEM Office", "lead": "Eid", "phase": "BRD Completed", "risk": "On Track", "pct": 90, "brdPriority": 2, "lastUpdate": "2026-06-16", "brdEta": "2026-06-07", "pastActions": "* Finished on the Expert Committee BRD document.", "nextSteps": "* Plan for a meeting with the Business Owner to get feedback regarding the submitted Expert Committee BRD document.", "businessOwner": "سلطان الهجلة", "aiChampion": "حمد الشريدة", "link": "", "support": "", "weeklyNote": "Coordinate a meeting with the Business Owner to get feedback", "noMovement": false}, {"solution": "Pleadings and Settlements", "sector": "HEM Office", "lead": "Eid", "phase": "Requirements Gathering", "risk": "On Track", "pct": 40, "brdPriority": 2, "lastUpdate": "2026-06-16", "brdEta": "2026-07-19", "pastActions": "* Finished preparation of draft scoping document (AI legal Advisor).", "nextSteps": "* Planning for Scope and BRD drafting.", "businessOwner": "سلطان الهجلة", "aiChampion": "حمد الشريدة", "link": "", "support": "", "weeklyNote": "No new update", "noMovement": true}, {"solution": "Policies and Requirements", "sector": "HEM Office", "lead": "Eid", "phase": "Requirements Gathering", "risk": "On Track", "pct": 40, "brdPriority": 2, "lastUpdate": "2026-06-16", "brdEta": "2026-07-19", "pastActions": "* Finished preparation of draft scoping document (AI legal Advisor).", "nextSteps": "* Planning for Scope and BRD drafting.", "businessOwner": "سلطان الهجلة", "aiChampion": "حمد الشريدة", "link": "", "support": "", "weeklyNote": "No new update", "noMovement": true}, {"solution": "Systems and Regulations", "sector": "HEM Office", "lead": "Eid", "phase": "Requirements Gathering", "risk": "On Track", "pct": 40, "brdPriority": 2, "lastUpdate": "2026-06-16", "brdEta": "2026-08-17", "pastActions": "* Finished preparation of draft scoping document (AI legal Advisor).", "nextSteps": "* Planning for Scope and BRD drafting.", "businessOwner": "سلطان الهجلة", "aiChampion": "حمد الشريدة", "link": "", "support": "", "weeklyNote": "Coordinate for a meeting with Business", "noMovement": false}, {"solution": "Land Issues", "sector": "HEM Office", "lead": "Eid", "phase": "Requirements Gathering", "risk": "On Track", "pct": 40, "brdPriority": 2, "lastUpdate": "2026-06-16", "brdEta": "2026-09-14", "pastActions": "* Finished preparation of draft scoping document (AI legal Advisor).", "nextSteps": "* Planning for Scope and BRD drafting.", "businessOwner": "سلطان الهجلة", "aiChampion": "حمد الشريدة", "link": "", "support": "", "weeklyNote": "No new update", "noMovement": true}];
+
+function startTpListening(){
+  if(unsubTp) unsubTp();
+  unsubTp=onSnapshot(tpCol,snap=>{
+    teamPulse=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(document.getElementById('view-teampulse').style.display==='block') renderTeamPulse();
+  });
+}
+
+async function seedTeamPulseIfEmpty(){
+  const snap=await getDocs(tpCol);
+  if(!snap.empty) return;
+  for(const s of TP_SEED){
+    await addDoc(tpCol,{...s,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedBy:'Initial import'});
+  }
+}
+
+function tpDaysSince(item){
+  if(!item.lastUpdate) return null;
+  const d=Math.floor((Date.now()-new Date(item.lastUpdate+'T00:00:00').getTime())/86400000);
+  return isNaN(d)?null:d;
+}
+function tpIsStalled(item){ const d=tpDaysSince(item); return d!==null && d>STALLED_THRESHOLD_DAYS; }
+
+window.tpSort=function(field){
+  if(tpSortField===field) tpSortDir*=-1; else { tpSortField=field; tpSortDir=1; }
+  renderTeamPulse();
+};
+
+window.toggleTpForm=function(){
+  editingTpId=null;
+  document.getElementById('tp-form-title').innerHTML='<i class="ti ti-plus"></i> New Project';
+  document.getElementById('tp-save-text').textContent='Add project';
+  ['tp-solution','tp-businessowner','tp-aichampion','tp-link','tp-nextsteps','tp-pastactions','tp-weeklynote','tp-eta'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tp-sector').value='';
+  document.getElementById('tp-lead').value='';
+  document.getElementById('tp-phase').value='Scoping';
+  document.getElementById('tp-risk').value='On Track';
+  document.getElementById('tp-pct').value='';
+  document.getElementById('tp-priority').value='';
+  document.getElementById('tp-lastupdate').value=todayStr;
+  const f=document.getElementById('tp-form');
+  f.classList.toggle('open');
+  if(f.classList.contains('open')) document.getElementById('tp-solution').focus();
+};
+window.cancelTpForm=function(){ editingTpId=null; document.getElementById('tp-form').classList.remove('open'); };
+
+window.editTpItem=function(id){
+  const it=teamPulse.find(x=>x.id===id); if(!it) return;
+  const myFirstName=currentUser?.displayName?.split(' ')[0];
+  const canEdit=isAdmin()||(currentUser&&(it.lead===currentUser.displayName||it.lead===myFirstName));
+  if(!canEdit){alert('You can only edit your own projects.');return;}
+  editingTpId=id;
+  document.getElementById('tp-form-title').innerHTML='<i class="ti ti-pencil"></i> Edit Project';
+  document.getElementById('tp-save-text').textContent='Save changes';
+  document.getElementById('tp-solution').value=it.solution||'';
+  document.getElementById('tp-sector').value=it.sector||'';
+  document.getElementById('tp-lead').value=it.lead||'';
+  document.getElementById('tp-phase').value=it.phase||'Scoping';
+  document.getElementById('tp-risk').value=it.risk||'On Track';
+  document.getElementById('tp-pct').value=it.pct||0;
+  document.getElementById('tp-priority').value=it.brdPriority||'';
+  document.getElementById('tp-lastupdate').value=it.lastUpdate||todayStr;
+  document.getElementById('tp-eta').value=it.brdEta||'';
+  document.getElementById('tp-businessowner').value=it.businessOwner||'';
+  document.getElementById('tp-aichampion').value=it.aiChampion||'';
+  document.getElementById('tp-link').value=it.link||'';
+  document.getElementById('tp-nextsteps').value=it.nextSteps||'';
+  document.getElementById('tp-pastactions').value=it.pastActions||'';
+  document.getElementById('tp-weeklynote').value=it.weeklyNote||'';
+  const f=document.getElementById('tp-form');
+  f.classList.add('open');
+  document.getElementById('tp-solution').focus();
+  f.scrollIntoView({behavior:'smooth',block:'start'});
+};
+
+window.saveTpItem=async function(){
+  const solution=document.getElementById('tp-solution').value.trim();
+  if(!solution){document.getElementById('tp-solution').focus();return;}
+  const btn=document.getElementById('tp-save-btn'); btn.disabled=true;
+  const priorityVal=document.getElementById('tp-priority').value;
+  const weeklyNote=document.getElementById('tp-weeklynote').value.trim();
+  const noteCheck=weeklyNote.toLowerCase();
+  const data={
+    solution,
+    sector:document.getElementById('tp-sector').value,
+    lead:document.getElementById('tp-lead').value,
+    phase:document.getElementById('tp-phase').value,
+    risk:document.getElementById('tp-risk').value,
+    pct:parseInt(document.getElementById('tp-pct').value)||0,
+    brdPriority:priorityVal?parseInt(priorityVal):null,
+    lastUpdate:document.getElementById('tp-lastupdate').value||todayStr,
+    brdEta:document.getElementById('tp-eta').value||null,
+    businessOwner:document.getElementById('tp-businessowner').value.trim(),
+    aiChampion:document.getElementById('tp-aichampion').value.trim(),
+    link:document.getElementById('tp-link').value.trim(),
+    nextSteps:document.getElementById('tp-nextsteps').value.trim(),
+    pastActions:document.getElementById('tp-pastactions').value.trim(),
+    weeklyNote,
+    noMovement: weeklyNote==='' || noteCheck.includes('no new update') || noteCheck==='-',
+    updatedAt:serverTimestamp(),
+    updatedBy:currentUser?.displayName||currentUser?.email
+  };
+  try{
+    if(editingTpId){ await updateDoc(doc(db,'teamPulse',editingTpId),data); }
+    else { data.createdAt=serverTimestamp(); await addDoc(tpCol,data); }
+    document.getElementById('tp-form').classList.remove('open'); editingTpId=null;
+  }catch(e){console.error(e);}
+  btn.disabled=false;
+};
+
+window.deleteTpItem=async function(id){
+  if(!isAdmin()){alert('Only admin can delete projects.');return;}
+  if(!confirm('Delete this project?')) return;
+  await deleteDoc(doc(db,'teamPulse',id));
+};
+
+window.toggleTpDetailRow=function(id){
+  const row=document.getElementById('tp-detail-'+id);
+  const btn=document.getElementById('tp-expand-'+id);
+  if(!row) return;
+  const open=row.classList.toggle('open');
+  if(btn) btn.innerHTML=open?'<i class="ti ti-chevron-up"></i>':'<i class="ti ti-chevron-down"></i>';
+};
+
+window.exportTpCSV=function(){
+  const headers=['Solution','Sector','Lead','Phase','Risk','% Complete','BRD Priority','Last Update','Days Since Update','BRD ETA','This Week Note','Business Owner','AI Champion','Link'];
+  const rows=teamPulse.map(it=>[it.solution,it.sector,it.lead,it.phase,it.risk,it.pct||0,it.brdPriority||'',it.lastUpdate||'',tpDaysSince(it)??'',it.brdEta||'',it.weeklyNote||'',it.businessOwner||'',it.aiChampion||'',it.link||''].map(v=>`"${String(v).replace(/"/g,'""')}"`));
+  const csv=[headers,...rows].map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='IIH_Team_Pulse.csv';a.click();
+};
+
+// Map flexible header names from an uploaded Excel file to our internal fields
+const TP_HEADER_MAP={
+  'solution name':'solution','solution':'solution',
+  'sector':'sector',
+  'ai solutions lead':'lead','a lead':'lead','lead':'lead',
+  'brd priority':'brdPriority','priority':'brdPriority',
+  '% complete':'pct','%':'pct',
+  'last update -->':'lastUpdate','last update':'lastUpdate',
+  'past actions details':'pastActions',
+  'next steps details':'nextSteps','next steps':'nextSteps',
+  'brd eta':'brdEta',
+  'phase':'phase',
+  'risk':'risk',
+  'business owner momah':'businessOwner',
+  'ai champion momah':'aiChampion',
+  'solution link':'link',
+  'backlog (new - update this column)':'weeklyNote'
+};
+function tpExcelDateToStr(v){
+  if(v===null||v===undefined||v==='') return null;
+  if(v instanceof Date) return v.toISOString().split('T')[0];
+  if(typeof v==='number'){ const d=new Date(Math.round((v-25569)*86400*1000)); return d.toISOString().split('T')[0]; }
+  const d=new Date(v);
+  return isNaN(d.getTime())?null:d.toISOString().split('T')[0];
+}
+
+window.handleTpImport=async function(ev){
+  if(!isAdmin()){alert('Only admin can import files.');ev.target.value='';return;}
+  const file=ev.target.files[0]; if(!file) return;
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array',cellDates:true});
+    const sheetName=wb.SheetNames.find(n=>/master/i.test(n))||wb.SheetNames[0];
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:null});
+    let updated=0, added=0, skipped=0;
+    for(const row of rows){
+      const mapped={};
+      for(const key in row){
+        const norm=key.trim().toLowerCase();
+        const field=TP_HEADER_MAP[norm];
+        if(field && row[key]!==null && row[key]!=='') mapped[field]=row[key];
+      }
+      if(!mapped.solution){ skipped++; continue; }
+      mapped.solution=String(mapped.solution).trim();
+      if(mapped.pct!==undefined) mapped.pct=Math.round(parseFloat(mapped.pct)<=1?parseFloat(mapped.pct)*100:parseFloat(mapped.pct));
+      if(mapped.brdPriority!==undefined) mapped.brdPriority=parseInt(mapped.brdPriority)||null;
+      if(mapped.lastUpdate!==undefined) mapped.lastUpdate=tpExcelDateToStr(mapped.lastUpdate);
+      if(mapped.brdEta!==undefined) mapped.brdEta=tpExcelDateToStr(mapped.brdEta);
+      if(mapped.weeklyNote!==undefined){
+        const n=String(mapped.weeklyNote).toLowerCase();
+        mapped.noMovement = n.includes('no new update') || n==='-' || n==='';
+      }
+      mapped.updatedAt=serverTimestamp();
+      mapped.updatedBy=(currentUser?.displayName||currentUser?.email)+' (Excel import)';
+      const existing=teamPulse.find(t=>(t.solution||'').trim().toLowerCase()===mapped.solution.toLowerCase());
+      if(existing){
+        await updateDoc(doc(db,'teamPulse',existing.id),mapped);
+        updated++;
+      } else {
+        mapped.createdAt=serverTimestamp();
+        if(mapped.pct===undefined) mapped.pct=0;
+        if(mapped.phase===undefined) mapped.phase='Scoping';
+        if(mapped.risk===undefined) mapped.risk='On Track';
+        await addDoc(tpCol,mapped);
+        added++;
+      }
+    }
+    alert(`Import done — ${updated} updated, ${added} added` + (skipped?`, ${skipped} rows skipped (no solution name)`:''));
+  }catch(e){
+    console.error(e);
+    alert('Import failed — check the file format. See console for details.');
+  }
+  ev.target.value='';
+};
+
+function renderTeamPulse(){
+  document.getElementById('tp-add-btn').style.display=isAdmin()?'flex':'none';
+  document.getElementById('tp-import-btn').style.display=isAdmin()?'flex':'none';
+  document.getElementById('tp-import-hint').style.display=isAdmin()?'block':'none';
+  document.getElementById('tp-threshold-label').textContent=STALLED_THRESHOLD_DAYS;
+
+  // KPI row
+  const total=teamPulse.length;
+  const avgPct=total?Math.round(teamPulse.reduce((s,it)=>s+(it.pct||0),0)/total):0;
+  const stalledCount=teamPulse.filter(tpIsStalled).length;
+  const nomoveCount=teamPulse.filter(it=>it.noMovement).length;
+  document.getElementById('tp-s-total').textContent=total||'—';
+  document.getElementById('tp-s-avgpct').textContent=total?avgPct+'%':'—';
+  document.getElementById('tp-s-stalled').textContent=stalledCount||'—';
+  document.getElementById('tp-s-nomove').textContent=nomoveCount||'—';
+
+  // Per-lead cards
+  const leadMap={};
+  teamPulse.forEach(it=>{
+    const lead=it.lead||'Not Assigned';
+    leadMap[lead]=leadMap[lead]||{total:0,pctSum:0,onTrack:0,atRisk:0,delayed:0,stalled:0};
+    const m=leadMap[lead];
+    m.total++; m.pctSum+=(it.pct||0);
+    if(it.risk==='At Risk') m.atRisk++; else if(it.risk==='Delayed') m.delayed++; else m.onTrack++;
+    if(tpIsStalled(it)) m.stalled++;
+  });
+  const leadEntries=Object.entries(leadMap).sort((a,b)=>b[1].total-a[1].total);
+  document.getElementById('tp-lead-cards').innerHTML=leadEntries.map(([name,m])=>{
+    const avgP=m.total?Math.round(m.pctSum/m.total):0;
+    const color=TP_LEAD_COLORS[name]||'#1F3864';
+    const initials=name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    return `<div class="tp-lead-card${m.stalled?' has-stalled':''}">
+      <div class="tp-lead-top">
+        <div class="tp-lead-avatar" style="background:${color}">${initials}</div>
+        <div><div class="tp-lead-name">${name}</div><div class="tp-lead-count">${m.total} project${m.total>1?'s':''} · ${avgP}% avg</div></div>
+      </div>
+      <div class="tp-lead-pctbar"><div class="tp-lead-pctfill" style="width:${avgP}%;background:${color}"></div></div>
+      <div class="tp-lead-badges">
+        ${m.onTrack?`<span class="tp-mini-badge" style="background:#E6F7F2;color:#009C6D">${m.onTrack} on track</span>`:''}
+        ${m.atRisk?`<span class="tp-mini-badge" style="background:#FFF8E6;color:#FFC000">${m.atRisk} at risk</span>`:''}
+        ${m.delayed?`<span class="tp-mini-badge" style="background:#FCEAEA;color:#C0504D">${m.delayed} delayed</span>`:''}
+        ${m.stalled?`<span class="tp-mini-badge" style="background:#fee2e2;color:#991b1b">⚠ ${m.stalled} stalled</span>`:''}
+      </div>
+    </div>`;
+  }).join('')||'<div style="color:#bbb;font-size:13px">No data yet</div>';
+
+  // Filters
+  const search=document.getElementById('tp-search').value.toLowerCase();
+  const sFilter=document.getElementById('tp-filter-sector').value;
+  const lFilter=document.getElementById('tp-filter-lead').value;
+  const phFilter=document.getElementById('tp-filter-phase').value;
+  const rFilter=document.getElementById('tp-filter-risk').value;
+  const mFilter=document.getElementById('tp-filter-move').value;
+
+  const sectors=[...new Set(teamPulse.map(it=>it.sector).filter(Boolean))];
+  const leads=[...new Set(teamPulse.map(it=>it.lead).filter(Boolean))];
+  const phases=[...new Set(teamPulse.map(it=>it.phase).filter(Boolean))];
+  const risks=[...new Set(teamPulse.map(it=>it.risk).filter(Boolean))];
+  [['tp-filter-sector',sectors,'All sectors'],['tp-filter-lead',leads,'All leads'],['tp-filter-phase',phases,'All phases'],['tp-filter-risk',risks,'All risks']].forEach(([selId,opts,def])=>{
+    const sel=document.getElementById(selId); const cur=sel.value;
+    sel.innerHTML=`<option value="">${def}</option>`;
+    opts.sort().forEach(o=>{const el=document.createElement('option');el.value=o;el.textContent=o;if(o===cur)el.selected=true;sel.appendChild(el);});
+  });
+
+  let filtered=teamPulse.filter(it=>{
+    if(search&&!(it.solution||'').toLowerCase().includes(search)&&!(it.lead||'').toLowerCase().includes(search)) return false;
+    if(sFilter&&it.sector!==sFilter) return false;
+    if(lFilter&&it.lead!==lFilter) return false;
+    if(phFilter&&it.phase!==phFilter) return false;
+    if(rFilter&&it.risk!==rFilter) return false;
+    if(mFilter==='stalled'&&!tpIsStalled(it)) return false;
+    if(mFilter==='nomove'&&!it.noMovement) return false;
+    return true;
+  });
+
+  filtered.sort((a,b)=>{
+    let av=a[tpSortField], bv=b[tpSortField];
+    if(tpSortField==='pct'){ av=av||0; bv=bv||0; }
+    else { av=(av||'').toString().toLowerCase(); bv=(bv||'').toString().toLowerCase(); }
+    if(av<bv) return -1*tpSortDir;
+    if(av>bv) return 1*tpSortDir;
+    return 0;
+  });
+
+  const phaseClass={'BRD Submitted':'phase-brd-submitted','BRD Completed':'phase-brd-submitted','BRD In Progress':'phase-brd-progress','Requirements Gathering':'phase-brd-progress','Scoping':'phase-scoping','Design Phase':'phase-design','N/A':'phase-na'};
+  const riskClass={'On Track':'risk-badge-ok','At Risk':'risk-badge-risk','Delayed':'risk-badge-delayed'};
+  const pctColorMini=p=>p>=75?'#16a34a':p>=40?'#d97706':'#dc2626';
+  const myFirstName=currentUser?.displayName?.split(' ')[0];
+
+  const tbody=document.getElementById('tp-table-body');
+  if(!filtered.length){ tbody.innerHTML='<tr><td colspan="9" class="empty"><i class="ti ti-mood-empty"></i>No projects found</td></tr>'; return; }
+
+  tbody.innerHTML=filtered.map(it=>{
+    const canEdit=isAdmin()||(currentUser&&(it.lead===currentUser.displayName||it.lead===myFirstName));
+    const days=tpDaysSince(it);
+    const stalled=tpIsStalled(it);
+    const pct=it.pct||0;
+    return `
+    <tr class="${stalled?'stalled-row':''}">
+      <td>
+        <div class="tp-sol-name">${it.solution||'—'}</div>
+        <div class="tp-sol-sector">${it.sector||''}</div>
+      </td>
+      <td>${it.lead||'—'}</td>
+      <td><span class="badge ${phaseClass[it.phase]||'phase-na'}">${it.phase||'—'}</span></td>
+      <td><span class="badge ${riskClass[it.risk]||'risk-badge-ok'}">${it.risk||'—'}</span></td>
+      <td><div class="tp-pct-mini"><div class="tp-pct-mini-bar"><div class="tp-pct-mini-fill" style="width:${pct}%;background:${pctColorMini(pct)}"></div></div><span style="font-size:11px;font-weight:700;color:${pctColorMini(pct)}">${pct}%</span></div></td>
+      <td>${it.lastUpdate||'—'}${days!==null?`<div style="font-size:11px;color:${stalled?'#dc2626':'#999'};font-weight:${stalled?700:400}">${stalled?'⚠ ':''}${days}d ago</div>`:''}</td>
+      <td><div class="tp-note${it.noMovement?' nomove':''}">${it.noMovement?'⏸ No movement':(it.weeklyNote||'—')}</div></td>
+      <td>${it.brdEta||'—'}</td>
+      <td>
+        <div class="tp-row-actions">
+          <button class="task-btn" id="tp-expand-${it.id}" onclick="toggleTpDetailRow('${it.id}')" title="Details"><i class="ti ti-chevron-down"></i></button>
+          ${canEdit?`<button class="task-btn edit" onclick="editTpItem('${it.id}')" title="Edit"><i class="ti ti-pencil"></i></button>`:''}
+          ${isAdmin()?`<button class="task-btn del" onclick="deleteTpItem('${it.id}')" title="Delete"><i class="ti ti-trash"></i></button>`:''}
+        </div>
+      </td>
+    </tr>
+    <tr class="tp-detail-row" id="tp-detail-${it.id}">
+      <td colspan="9">
+        <div class="tp-detail-box">
+          ${it.businessOwner?`<div><b>Business Owner:</b> ${it.businessOwner}</div>`:''}
+          ${it.aiChampion?`<div><b>AI Champion:</b> ${it.aiChampion}</div>`:''}
+          ${it.pastActions?`<div style="margin-top:6px"><b>Past actions:</b> ${it.pastActions}</div>`:''}
+          ${it.nextSteps?`<div style="margin-top:6px"><b>Next steps:</b> ${it.nextSteps}</div>`:''}
+          ${it.link?`<div style="margin-top:6px"><b>Link:</b> <a href="${it.link}" target="_blank" rel="noopener">${it.link}</a></div>`:''}
+          ${it.updatedBy?`<div style="margin-top:6px;color:#aaa;font-size:11px">Last updated by ${it.updatedBy}</div>`:''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
 document.getElementById('bl-search').addEventListener('input',renderBacklog);
 document.getElementById('bl-filter-sector').addEventListener('change',renderBacklog);
 document.getElementById('bl-filter-phase').addEventListener('change',renderBacklog);
 document.getElementById('bl-filter-risk').addEventListener('change',renderBacklog);
 document.getElementById('bl-filter-lead').addEventListener('change',renderBacklog);
 document.getElementById('bl-filter-stalled').addEventListener('change',renderBacklog);
+
+document.getElementById('tp-search').addEventListener('input',renderTeamPulse);
+document.getElementById('tp-filter-sector').addEventListener('change',renderTeamPulse);
+document.getElementById('tp-filter-lead').addEventListener('change',renderTeamPulse);
+document.getElementById('tp-filter-phase').addEventListener('change',renderTeamPulse);
+document.getElementById('tp-filter-risk').addEventListener('change',renderTeamPulse);
+document.getElementById('tp-filter-move').addEventListener('change',renderTeamPulse);
 
 document.getElementById('search').addEventListener('input',render);
 document.getElementById('filter-member').addEventListener('change',render);
